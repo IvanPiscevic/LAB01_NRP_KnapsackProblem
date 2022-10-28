@@ -1,12 +1,12 @@
 import json
 import random
+import time
 import numpy as np
 from deap import algorithms
 from deap import base
 from deap import creator
 from deap import tools
 
-# TODO: FIX PROBLEM IN WHICH EVERY INDIVIDUAL HAS ONLY 5 ITEMS (FILL WITH ITEMS UNTIL MAX WEIGHT IS REACHED)
 
 MAX_WEIGHT = 15
 
@@ -29,27 +29,23 @@ class Evaluator(object):
         selectedItemList = []
         selectedItemFlag = False
 
-        while True:
-            item_idx = random.randint(0, len(candidate) - 1)
-            # print(str(candidate) + '\n')    # old OUTPUT: [False, True, False, True, True] ex.
-            #                                   new OUTPUT: [{'weight': 1, 'profit': 2}, {'weight': 12, 'profit': 4},
-            #                                               {'weight': 12, 'profit': 4}, {'weight': 4, 'profit': 10},
-            #                                               {'weight': 1, 'profit': 1}]
-            selectedItemList.append(candidate[item_idx])
+        # item_idx = random.randint(0, len(candidate) - 1)
+        for j in range(len(candidate) - 1):
+            selectedItemList.append(candidate[j])
             # print(str(selectedItemList) + "\n")
-            total_weight += candidate[item_idx]['weight']
-            total_profit += candidate[item_idx]['profit']
+            total_weight += candidate[j]['weight']
+            total_profit += candidate[j]['profit']
 
             if total_weight > self.capacity:
                 break
-            elif selectedItemList.count(candidate[item_idx]) > 3:
+            elif selectedItemList.count(candidate[j]) > 3:
                 selectedItemFlag = True
                 break
 
         if total_weight > self.capacity:
-            overload = 10000             # Changed: total_weight - self.capacity -> 10000
+            return 50000, 0                    # Changed: total_weight - self.capacity -> 10000
         elif selectedItemFlag:
-            return 10000, 0                     # TODO: Questionable return vals
+            return 20000, 0                     # TODO: Questionable return vals
         else:
             overload = 0
 
@@ -60,6 +56,7 @@ with open('items2.json') as f:
     items = json.load(f)
     random.shuffle(items)
 
+
 # with open('capacity2.json') as f:
 #     capacity = json.load(f)
 
@@ -68,7 +65,7 @@ capacity = MAX_WEIGHT
 evaluator = Evaluator(items, capacity)
 
 # Objectives are decreasing overload and increasing total profit, in that order
-creator.create('FitnessMulti', base.Fitness, weights=(1, 1))                # Changed weight fitness value from -1 to 1.
+creator.create('FitnessMulti', base.Fitness, weights=(-1, 1))               # Changed weight fitness value from -1 to 1.
 creator.create('Individual', list, fitness=creator.FitnessMulti)
 
 IND_INIT_SIZE = 5
@@ -81,14 +78,6 @@ toolbox = base.Toolbox()
 #                  creator.Individual,
 #                  toolbox.random_bit,
 #                  n = len(items))
-
-# toolbox.register("attr_item", random.randrange, NBR_ITEMS)
-# toolbox.register("individual",
-#                  tools.initRepeat,
-#                  creator.Individual,
-#                 toolbox.attr_item,
-#                  IND_INIT_SIZE)
-
 
 def mutList(individual):
     # print(str(individual) + "\n")
@@ -105,6 +94,7 @@ def mutList(individual):
     return individual,
 
 
+randNumOfItems = random.randint(1, 10)
 toolbox.register('random_item', lambda: random.choice(items))
 toolbox.register('individual',
                  tools.initRepeat,
@@ -120,11 +110,11 @@ toolbox.register('select', tools.selBest)         # TODO: Problem selNSGA2 -> se
 
 # random.seed(42)
 
-NGEN = 50           # The number of generation.
-MU = 50             # The number of individuals to select for the next generation.
+NGEN = 1000         # The number of generation.
+MU = 50            # The number of individuals to select for the next generation.
 LAMBDA = 100        # The number of children to produce at each generation.
 CXPB = 0.5          # The probability that an offspring is produced by crossover.
-MUTPB = 0.2         # The probability that an offspring is produced by mutation.
+MUTPB = 0         # The probability that an offspring is produced by mutation.
 
 
 pop = toolbox.population(n=MU)
@@ -137,6 +127,7 @@ hof = tools.ParetoFront()
 #                                halloffame=hof,
 #                                verbose=True)
 
+start_time = time.time()
 pop, log = algorithms.eaMuPlusLambda(pop, toolbox, MU, LAMBDA, CXPB, MUTPB, NGEN, halloffame=hof, verbose=True)
 
 total_profit = 0
@@ -160,3 +151,4 @@ print()
 print(f'Total weight: {total_weight}')
 print(f'Capacity: {capacity}')
 print(f'Total profit: {total_profit}')
+print("--- %s seconds ---" % (time.time() - start_time))
